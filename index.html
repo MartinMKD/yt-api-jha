@@ -1,0 +1,123 @@
+<html>
+<head>
+  <title>YT API</title>
+<style>
+button { 
+    color:black; 
+    font: old 84% 'trebuchet ms',helvetica,sans-serif; 
+    background-color:#fed; 
+    border:1px solid; 
+    border-color: #696 #363 #363 #696; 
+}
+.flex-container {
+  display: flex;
+  align-items: center;
+}
+
+.flex-container > div {
+  background-color: #f1f1f1;
+  margin: 10px;
+  padding: 20px;
+  font-size: 30px;
+}
+</style>
+</head>
+
+<body>
+  <script type="module">
+    import { message } from '/src/message.js';
+    import { html, render } from 'lit-html';
+    import { logDebug } from '/src/logger.js';
+    logDebug('Martin');
+    console.log('Hello console world!');
+    console.log(message);
+
+    render(html` <p>Hello lit-html</p> `, document.body);
+  </script>
+
+  <script src="https://accounts.google.com/gsi/client" async></script>
+  <script src="https://apis.google.com/js/api.js"></script>
+
+  <script>
+    function handleCredentialResponse(response) {
+      console.log("Encoded JWT ID token: " + response.credential);
+    }
+
+    window.onload = function () {
+      google.accounts.id.initialize({
+        client_id: '257938316244-6gtnlbemelql8e5pqec9tttclmgv3om0.apps.googleusercontent.com',
+        callback: handleCredentialResponse
+      });
+
+      google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // try next provider if OneTap is not displayed or skipped
+        }
+      });
+
+      const parent = document.getElementById('google_btn');
+      google.accounts.id.renderButton(parent, {theme: "filled_blue"});
+      google.accounts.id.prompt();
+    }
+
+    function authenticate() {
+      return gapi.auth2.getAuthInstance()
+        .signIn({scope: "https://www.googleapis.com/auth/youtube.force-ssl"})
+        .then(function() { console.log("Sign-in successful"); },
+              function(err) { console.error("Error signing in", err); });
+    }
+
+    function loadClient() {
+      gapi.client.setApiKey("AIzaSyC56zmW-r43bU1clAF8ntDIKJKHuwluDsQ");
+      return gapi.client.load("https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest")
+        .then(function() { console.log("GAPI client loaded for API"); },
+              function(err) { console.error("Error loading GAPI client for API", err); });
+    }
+
+    // Make sure the client is loaded and sign-in is complete before calling this method.
+    function execute() {
+      var searchBar = document.getElementById('search-bar');
+      var sortOrder = document.getElementById('sortOrder');
+      var sortOrdervalue = sortOrder.value;
+      var sortOrderText = sortOrder.options[sortOrder.selectedIndex].text;
+      var nextPageToken = '';
+
+      return gapi.client.youtube.search.list({
+        'part': 'snippet',
+        'q': searchBar,
+        'type': 'video',
+        'maxResults': 10,
+        'order': sortOrderText,
+        'pageToken': nextPageToken,
+      }).then(function(response) {
+        // Handle the results here (response.result has the parsed body).
+        console.log("Response", response);
+      },function(err) { console.error("Execute error", err); });
+    }
+
+    gapi.load("client:auth2", function() {
+      gapi.auth2.init({client_id: "257938316244-6gtnlbemelql8e5pqec9tttclmgv3om0.apps.googleusercontent.com"});
+    });
+
+    const button = document.getElementById('signout_button');
+    button.onclick = () => {
+      google.accounts.id.disableAutoSelect();
+    }
+
+  </script>
+  <div class="flex-container">
+    <div id="google_btn"></div>
+    <button id="signout_button" class="g_id_signout">sign out</button>
+  </div>
+  <button onclick="authenticate().then(loadClient)">authorize and load</button>
+  <p/>
+  <button onclick="execute()">Search</button>
+  <input id="search-bar" type="text"></input>
+  <label for="sortOrder">Sort by:</label>
+  <select name="sortOrder" id="sortOrder">
+    <option value="date">Date</option>
+    <option value="rating">Rating</option>
+    <option value="relevance" selected>Relevance</option>
+  </select>
+</body>
+</html>
