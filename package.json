@@ -5,7 +5,8 @@
   "devDependencies": {
     "@rollup/plugin-replace": "^5.0.5",
     "@web/dev-server": "^0.4.2",
-    "@web/dev-server-rollup": "^0.6.1"
+    "@web/dev-server-rollup": "^0.6.1",
+    "lit": "^3.1.2"
   },
   "dependencies": {
     "@web/dev-server-esbuild": "^1.0.2",

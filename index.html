@@ -1,6 +1,6 @@
 <html>
 <head>
-  <title>YT API</title>
+  <title>YouTube Data API</title>
 <style>
 button { 
     color:black; 
@@ -22,102 +22,138 @@ button {
 }
 </style>
 </head>
-
 <body>
-  <script type="module">
-    import { message } from '/src/message.js';
-    import { html, render } from 'lit-html';
-    import { logDebug } from '/src/logger.js';
-    logDebug('Martin');
-    console.log('Hello console world!');
-    console.log(message);
+<script>
+    var CLIENT_ID = '257938316244-6gtnlbemelql8e5pqec9tttclmgv3om0.apps.googleusercontent.com';
+    var REDIRECT_URI = 'http://localhost:8000';
 
-    render(html` <p>Hello lit-html</p> `, document.body);
-  </script>
+    function decodeJwtResponse(token)
+    {
+      console.log("Encoded JWT ID token: " + token);
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+      );
+      return JSON.parse(jsonPayload);
+    }
 
-  <script src="https://accounts.google.com/gsi/client" async></script>
-  <script src="https://apis.google.com/js/api.js"></script>
-
-  <script>
     function handleCredentialResponse(response) {
       console.log("Encoded JWT ID token: " + response.credential);
+      // decodeJwtResponse() is a custom function defined by you
+      // to decode the credential response.
+      const responsePayload = decodeJwtResponse(response.credential);
+      console.log("ID: " + responsePayload.sub);
+      console.log('Full Name: ' + responsePayload.name);
+      console.log('Given Name: ' + responsePayload.given_name);
+      console.log('Family Name: ' + responsePayload.family_name);
+      console.log("Image URL: " + responsePayload.picture);
+      console.log("Email: " + responsePayload.email);
+      oauthSignIn();
     }
 
-    window.onload = function () {
-      google.accounts.id.initialize({
-        client_id: '257938316244-6gtnlbemelql8e5pqec9tttclmgv3om0.apps.googleusercontent.com',
-        callback: handleCredentialResponse
-      });
+    /*
+    * Create form to request access token from Google's OAuth 2.0 server.
+    */
+    function oauthSignIn() {
+      // Google's OAuth 2.0 endpoint for requesting an access token
+      var oauth2Endpoint = 'https://accounts.google.com/o/oauth2/v2/auth';
 
-      google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // try next provider if OneTap is not displayed or skipped
+      // Create <form> element to submit parameters to OAuth 2.0 endpoint.
+      var form = document.createElement('form');
+      form.setAttribute('method', 'GET'); // Send as a GET request.
+      form.setAttribute('action', oauth2Endpoint);
+
+      // Parameters to pass to OAuth 2.0 endpoint.
+      var params = {'client_id': CLIENT_ID,
+                'redirect_uri': REDIRECT_URI,
+                'response_type': 'token',
+                'scope': 'https://www.googleapis.com/auth/youtube.force-ssl',
+                'include_granted_scopes': 'true',
+                'state': 'pass-through value'};
+
+      // Add form parameters as hidden input values.
+      for (var p in params) {
+        var input = document.createElement('input');
+        input.setAttribute('type', 'hidden');
+        input.setAttribute('name', p);
+        input.setAttribute('value', params[p]);
+        form.appendChild(input);
+      }
+
+      // Add form to page and submit it to open the OAuth 2.0 endpoint.
+      document.body.appendChild(form);
+      form.submit();
+    }
+
+  // If there's an access token, try an API request.
+  // Otherwise, start OAuth 2.0 flow.
+  function searchRequest() {
+    var searchInput = document.getElementById('search-box');
+    var sortOrderSelect = document.getElementById('sortOrder');
+    var sortOrdervalue = sortOrderSelect.value;
+    var sortOrderText = sortOrderSelect.options[sortOrderSelect.selectedIndex].text;
+    var nextPageToken = '';
+
+    var params = JSON.parse(localStorage.getItem('oauth2-test-params'));
+    if (params && params['access_token']) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET',
+          'https://youtube.googleapis.com/youtube/v3/search?' +
+          'part=snippet' + 
+          '&maxResults=10' +
+          '&order=' + sortOrderText +
+          '&q=' + searchInput);
+      xhr.setRequestHeader('Accept', 'application/json');
+      xhr.setRequestHeader('Authorization', 'Bearer ' + params['access_token']);
+      xhr.onreadystatechange = function (e) {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+          console.log(xhr.response);
+        } else if (xhr.readyState === 4 && xhr.status === 401) {
+          // Token invalid, so prompt for user permission.
+          oauthSignIn();
         }
-      });
-
-      const parent = document.getElementById('google_btn');
-      google.accounts.id.renderButton(parent, {theme: "filled_blue"});
-      google.accounts.id.prompt();
+      };
+      xhr.send(null);
+    } else {
+      oauthSignIn();
     }
+  }
 
-    function authenticate() {
-      return gapi.auth2.getAuthInstance()
-        .signIn({scope: "https://www.googleapis.com/auth/youtube.force-ssl"})
-        .then(function() { console.log("Sign-in successful"); },
-              function(err) { console.error("Error signing in", err); });
+  var fragmentString = location.hash.substring(1);
+  // Parse query string to see if page request is coming from OAuth 2.0 server.
+  var params = {};
+  var regex = /([^&=]+)=([^&]*)/g, m;
+  while (m = regex.exec(fragmentString)) {
+    params[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
+  }
+  if (Object.keys(params).length > 0) {
+    localStorage.setItem('oauth2-test-params', JSON.stringify(params) );
+    if (params['state'] && params['state'] == 'pass-through value') {
+      console.log("searchRequest();");
     }
+  }
+</script>
 
-    function loadClient() {
-      gapi.client.setApiKey("AIzaSyC56zmW-r43bU1clAF8ntDIKJKHuwluDsQ");
-      return gapi.client.load("https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest")
-        .then(function() { console.log("GAPI client loaded for API"); },
-              function(err) { console.error("Error loading GAPI client for API", err); });
-    }
-
-    // Make sure the client is loaded and sign-in is complete before calling this method.
-    function execute() {
-      var searchBar = document.getElementById('search-bar');
-      var sortOrder = document.getElementById('sortOrder');
-      var sortOrdervalue = sortOrder.value;
-      var sortOrderText = sortOrder.options[sortOrder.selectedIndex].text;
-      var nextPageToken = '';
-
-      return gapi.client.youtube.search.list({
-        'part': 'snippet',
-        'q': searchBar,
-        'type': 'video',
-        'maxResults': 10,
-        'order': sortOrderText,
-        'pageToken': nextPageToken,
-      }).then(function(response) {
-        // Handle the results here (response.result has the parsed body).
-        console.log("Response", response);
-      },function(err) { console.error("Execute error", err); });
-    }
-
-    gapi.load("client:auth2", function() {
-      gapi.auth2.init({client_id: "257938316244-6gtnlbemelql8e5pqec9tttclmgv3om0.apps.googleusercontent.com"});
-    });
-
-    const button = document.getElementById('signout_button');
-    button.onclick = () => {
-      google.accounts.id.disableAutoSelect();
-    }
-
-  </script>
-  <div class="flex-container">
-    <div id="google_btn"></div>
-    <button id="signout_button" class="g_id_signout">sign out</button>
-  </div>
-  <button onclick="authenticate().then(loadClient)">authorize and load</button>
-  <p/>
-  <button onclick="execute()">Search</button>
-  <input id="search-bar" type="text"></input>
-  <label for="sortOrder">Sort by:</label>
-  <select name="sortOrder" id="sortOrder">
-    <option value="date">Date</option>
-    <option value="rating">Rating</option>
-    <option value="relevance" selected>Relevance</option>
-  </select>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<div id="g_id_onload"
+  data-onsuccess="onSuccess"
+  data-client_id="257938316244-6gtnlbemelql8e5pqec9tttclmgv3om0.apps.googleusercontent.com"
+  data-callback="handleCredentialResponse">
+</div>
+<div class="g_id_signin" data-type="standard"></div>
+<p/>
+Keyword:
+<input id="search-box" value="dogs" type="text"></input>
+<label for="sortOrder">Sort by:</label>
+<select name="sortOrder" id="sortOrder">
+  <option value="date">Date</option>
+  <option value="rating">Rating</option>
+  <option value="relevance" selected>Relevance</option>
+</select>
+<button onclick="searchRequest();">Search</button>
 </body>
 </html>
