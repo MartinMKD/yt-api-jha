@@ -5,7 +5,7 @@
   <script src="../node_modules/lit/polyfill-support.js"></script>
   <script type="module" src="src/yt-results.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-
+  <script src="https://apis.google.com/js/api.js"></script>
   <style>
     button { 
       color:black; 
@@ -29,12 +29,12 @@
 </head>
 <body>
 <script>
-    var CLIENT_ID = '257938316244-6gtnlbemelql8e5pqec9tttclmgv3om0.apps.googleusercontent.com';
+    var CLIENT_ID = '1088439526988-a9j7jpcul80pabpf0fco64q0pqv71f83.apps.googleusercontent.com';
     var REDIRECT_URI = 'http://localhost:8000';
+    var URI_PARAMS = 'ytapi-uri-params';
 
     function decodeJwtResponse(token)
     {
-      console.log("Encoded JWT ID token: " + token);
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const jsonPayload = decodeURIComponent(
@@ -47,9 +47,6 @@
     }
 
     function handleCredentialResponse(response) {
-      console.log("Encoded JWT ID token: " + response.credential);
-      // decodeJwtResponse() is a custom function defined by you
-      // to decode the credential response.
       const responsePayload = decodeJwtResponse(response.credential);
       console.log("ID: " + responsePayload.sub);
       console.log('Full Name: ' + responsePayload.name);
@@ -98,33 +95,31 @@
     // If there's an access token, try an API request.
     // Otherwise, start OAuth 2.0 flow.
     function searchRequest() {
-      var searchInput = document.getElementById('search-box');
+      var searchInput = document.getElementById('search-box').value;
       var sortOrderSelect = document.getElementById('sortOrder');
-      var sortOrdervalue = sortOrderSelect.value;
+      var sortOrderValue = document.getElementById('sortOrder').value;
       var sortOrderText = sortOrderSelect.options[sortOrderSelect.selectedIndex].text;
       var nextPageToken = '';
 
-      var params = JSON.parse(localStorage.getItem('oauth2-test-params'));
+      var params = JSON.parse(localStorage.getItem(URI_PARAMS));
       if (params && params['access_token']) {
         var xhr = new XMLHttpRequest();
-        xhr.open('GET',
-            'https://youtube.googleapis.com/youtube/v3/search?' +
-            'part=snippet' + 
-            '&maxResults=10' +
-            '&order=' + sortOrderText +
-            '&q=' + searchInput);
+        var req = 'https://youtube.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&type=video' + 
+            '&order=' + sortOrderText + 
+            '&q=' + searchInput;
+        xhr.open('GET', req);
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.setRequestHeader('Authorization', 'Bearer ' + params['access_token']);
         xhr.onreadystatechange = function (e) {
           if (xhr.readyState === 4 && xhr.status === 200) {
             const ytResult = document.querySelector('yt-results');
-            ytResult.data = xhr.response;
+            ytResult.jsonData = JSON.parse(xhr.response);
           } else if (xhr.readyState === 4 && xhr.status === 401) {
             // Token invalid, so prompt for user permission.
             oauthSignIn();
           }
         };
-        xhr.send(null);
+        xhr.send();
       } else {
         oauthSignIn();
       }
@@ -138,22 +133,22 @@
     params[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
   }
   if (Object.keys(params).length > 0) {
-    localStorage.setItem('oauth2-test-params', JSON.stringify(params) );
+    localStorage.setItem(URI_PARAMS, JSON.stringify(params) );
     if (params['state'] && params['state'] == 'pass-through value') {
-      console.log("searchRequest();");
+      //searchRequest();
     }
   }
 </script>
 
 <div id="g_id_onload"
   data-onsuccess="onSuccess"
-  data-client_id="257938316244-6gtnlbemelql8e5pqec9tttclmgv3om0.apps.googleusercontent.com"
+  data-client_id="1088439526988-a9j7jpcul80pabpf0fco64q0pqv71f83.apps.googleusercontent.com"
   data-callback="handleCredentialResponse">
 </div>
 <div class="g_id_signin" data-type="standard"></div>
 <p/>
 Keyword:
-<input id="search-box" value="dogs" type="text"></input>
+<input id="search-box" value="Chuck Norris jokes" type="text"></input>
 <label for="sortOrder">Sort by:</label>
 <select name="sortOrder" id="sortOrder">
   <option value="date">Date</option>
