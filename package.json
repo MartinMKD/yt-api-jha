@@ -6,6 +6,7 @@
     "@rollup/plugin-replace": "^5.0.5",
     "@web/dev-server": "^0.4.2",
     "@web/dev-server-rollup": "^0.6.1",
+    "@webcomponents/webcomponentsjs": "^2.8.0",
     "lit": "^3.1.2"
   },
   "dependencies": {

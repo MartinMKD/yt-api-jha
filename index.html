@@ -1,26 +1,31 @@
 <html>
 <head>
   <title>YouTube Data API</title>
-<style>
-button { 
-    color:black; 
-    font: old 84% 'trebuchet ms',helvetica,sans-serif; 
-    background-color:#fed; 
-    border:1px solid; 
-    border-color: #696 #363 #363 #696; 
-}
-.flex-container {
-  display: flex;
-  align-items: center;
-}
+  <script src="../node_modules/@webcomponents/webcomponentsjs/webcomponents-loader.js"></script>
+  <script src="../node_modules/lit/polyfill-support.js"></script>
+  <script type="module" src="src/yt-results.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-.flex-container > div {
-  background-color: #f1f1f1;
-  margin: 10px;
-  padding: 20px;
-  font-size: 30px;
-}
-</style>
+  <style>
+    button { 
+      color:black; 
+      font: old 84% 'trebuchet ms',helvetica,sans-serif; 
+      background-color:#fed; 
+      border:1px solid; 
+      border-color: #696 #363 #363 #696; 
+    }
+   .flex-container {
+      display: flex;
+      align-items: center;
+   }
+
+  .flex-container > div {
+    background-color: #f1f1f1;
+    margin: 10px;
+    padding: 20px;
+    font-size: 30px;
+  }
+  </style>
 </head>
 <body>
 <script>
@@ -89,39 +94,41 @@ button {
       form.submit();
     }
 
-  // If there's an access token, try an API request.
-  // Otherwise, start OAuth 2.0 flow.
-  function searchRequest() {
-    var searchInput = document.getElementById('search-box');
-    var sortOrderSelect = document.getElementById('sortOrder');
-    var sortOrdervalue = sortOrderSelect.value;
-    var sortOrderText = sortOrderSelect.options[sortOrderSelect.selectedIndex].text;
-    var nextPageToken = '';
 
-    var params = JSON.parse(localStorage.getItem('oauth2-test-params'));
-    if (params && params['access_token']) {
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET',
-          'https://youtube.googleapis.com/youtube/v3/search?' +
-          'part=snippet' + 
-          '&maxResults=10' +
-          '&order=' + sortOrderText +
-          '&q=' + searchInput);
-      xhr.setRequestHeader('Accept', 'application/json');
-      xhr.setRequestHeader('Authorization', 'Bearer ' + params['access_token']);
-      xhr.onreadystatechange = function (e) {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-          console.log(xhr.response);
-        } else if (xhr.readyState === 4 && xhr.status === 401) {
-          // Token invalid, so prompt for user permission.
-          oauthSignIn();
-        }
-      };
-      xhr.send(null);
-    } else {
-      oauthSignIn();
+    // If there's an access token, try an API request.
+    // Otherwise, start OAuth 2.0 flow.
+    function searchRequest() {
+      var searchInput = document.getElementById('search-box');
+      var sortOrderSelect = document.getElementById('sortOrder');
+      var sortOrdervalue = sortOrderSelect.value;
+      var sortOrderText = sortOrderSelect.options[sortOrderSelect.selectedIndex].text;
+      var nextPageToken = '';
+
+      var params = JSON.parse(localStorage.getItem('oauth2-test-params'));
+      if (params && params['access_token']) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET',
+            'https://youtube.googleapis.com/youtube/v3/search?' +
+            'part=snippet' + 
+            '&maxResults=10' +
+            '&order=' + sortOrderText +
+            '&q=' + searchInput);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('Authorization', 'Bearer ' + params['access_token']);
+        xhr.onreadystatechange = function (e) {
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            const ytResult = document.querySelector('yt-results');
+            ytResult.data = xhr.response;
+          } else if (xhr.readyState === 4 && xhr.status === 401) {
+            // Token invalid, so prompt for user permission.
+            oauthSignIn();
+          }
+        };
+        xhr.send(null);
+      } else {
+        oauthSignIn();
+      }
     }
-  }
 
   var fragmentString = location.hash.substring(1);
   // Parse query string to see if page request is coming from OAuth 2.0 server.
@@ -138,7 +145,6 @@ button {
   }
 </script>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <div id="g_id_onload"
   data-onsuccess="onSuccess"
   data-client_id="257938316244-6gtnlbemelql8e5pqec9tttclmgv3om0.apps.googleusercontent.com"
@@ -155,5 +161,10 @@ Keyword:
   <option value="relevance" selected>Relevance</option>
 </select>
 <button onclick="searchRequest();">Search</button>
+<p/>
+Results:
+<p/>
+<yt-results>
+</yt-results>
 </body>
 </html>
